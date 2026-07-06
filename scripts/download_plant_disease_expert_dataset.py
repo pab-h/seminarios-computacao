@@ -1,1 +1,8 @@
-# Faça um código que baixe o dataset Plant Disease
+import kagglehub
+
+path = kagglehub.dataset_download(
+    "sadmansakibmahi/plant-disease-expert",
+    output_dir = "data/kaggle"
+)
+
+print("Path to dataset files:", path)
