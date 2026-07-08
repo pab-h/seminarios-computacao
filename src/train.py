@@ -68,7 +68,7 @@ def get_callbacks(model_save_path):
 
 def plot_training_results(history):
     
-    os.mkdir(MODEL_DIST_PATH, exist_ok=True)
+    os.makedirs(MODEL_DIST_PATH, exist_ok=True)
 
     acc = history.history["accuracy"]
     val_acc = history.history["val_accuracy"]
