@@ -9,8 +9,8 @@ from tqdm import tqdm
 DATASET_DIR = 'data/PlantVillage/raw/color'
 OUTPUT_DIR  = 'data/PlantVillageSubset'
 
-IMG_HEIGHT_ORIGINAL = 256
-IMG_WIDTH_ORIGINAL  = 256
+IMG_HEIGHT_RESIZE = 128
+IMG_WIDTH_RESIZE  = 128
 
 TARGET_SIZE  = 3000  
 SUBSET_SIZE  = 10
@@ -35,7 +35,7 @@ def load_image_to_numpy(file_path):
 
     img = tf.io.read_file(file_path)
     img = tf.image.decode_jpeg(img, channels=3)
-    img = tf.image.resize(img, [IMG_HEIGHT_ORIGINAL, IMG_WIDTH_ORIGINAL])
+    img = tf.image.resize(img, [IMG_HEIGHT_RESIZE, IMG_WIDTH_RESIZE])
 
     return img.numpy()
 
