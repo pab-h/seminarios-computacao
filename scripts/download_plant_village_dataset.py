@@ -1,5 +1,8 @@
-from datasets import load_dataset
+import subprocess
 
-dataset = load_dataset("mohanty/PlantVillage", "default")
-
-dataset.save_to_disk("data/huggingface/PlantVillage")
+subprocess.run([
+    'git',
+    'clone',
+    'https://github.com/spMohanty/PlantVillage-Dataset.git',
+    'data/PlantVillage'
+])
