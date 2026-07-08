@@ -3,8 +3,9 @@ import random
 import keras
 import tensorflow as tf
 
-from keras import layers
-from tqdm import tqdm 
+from keras                   import layers
+from tqdm                    import tqdm 
+from sklearn.model_selection import train_test_split 
 
 DATASET_DIR = 'data/PlantVillage/raw/color'
 OUTPUT_DIR  = 'data/PlantVillageSubset'
@@ -14,6 +15,8 @@ IMG_WIDTH_RESIZE  = 128
 
 TARGET_SIZE  = 3000  
 SUBSET_SIZE  = 10
+
+TRAIN_SPLIT = 0.70
 
 def get_top_classes(top): 
 
@@ -28,7 +31,7 @@ def get_top_classes(top):
             all_classes[class_name] = files
 
     top_classes = sorted(all_classes.items(), key=lambda x: len(x[1]), reverse=True)[: top]
-
+    
     return top_classes
 
 def load_image_to_numpy(file_path):
@@ -54,64 +57,82 @@ def apply_augmentation_and_noise(image_tensor):
     
     return (img_with_noise.numpy() * 255).astype('uint8')
 
+def save_images_to_splits(class_name, all_images_numpy):
+
+    train_imgs, temp_imgs = train_test_split(
+        all_images_numpy, 
+        train_size   = TRAIN_SPLIT, 
+        random_state = 42
+    )
+    
+    val_imgs, test_imgs = train_test_split(
+        temp_imgs, 
+        test_size    = 0.5, 
+        random_state = 42
+    )
+
+    splits = {
+        'train': train_imgs,
+        'val':   val_imgs,
+        'test':  test_imgs
+    }
+
+    for split_name, images in splits.items():
+
+        split_dir = os.path.join(OUTPUT_DIR, split_name, class_name)
+        os.makedirs(split_dir, exist_ok=True)
+        
+        for idx, img in enumerate(images):
+            
+            output_file_path = os.path.join(split_dir, f"img_{idx}.jpg")
+            keras.utils.save_img(output_file_path, img)
+
 def create_subset(top_classes):
 
     for class_name, files in top_classes:
 
         num_samples = len(files)
-        
-        class_output_dir = os.path.join(OUTPUT_DIR, class_name)
-        os.makedirs(class_output_dir, exist_ok=True)
-        
         print(f"\nProcessando classe: {class_name}")
         
+        final_class_images = []
+        
         if num_samples >= TARGET_SIZE:
-
             sampled_files = random.sample(files, TARGET_SIZE)
             
-            for idx, file_path in enumerate(tqdm(sampled_files, desc = "Subamostragem")):
+            for file_path in tqdm(sampled_files, desc="Carregando Subamostragem"):
                 img = load_image_to_numpy(file_path)
-                output_file_path = os.path.join(class_output_dir, f"img_{idx}.jpg")
-                keras.utils.save_img(output_file_path, img)
+                final_class_images.append(img)
                 
         else:
 
-            loaded_tensors = []
-
-            for idx, file_path in enumerate(tqdm(files, desc="Copiando Originais")):
-
+            for file_path in tqdm(files, desc="Carregando Originais"):
                 img = load_image_to_numpy(file_path)
-                loaded_tensors.append(img)
-                
-                output_file_path = os.path.join(class_output_dir, f"img_{idx}.jpg")
-                keras.utils.save_img(output_file_path, img)
+                final_class_images.append(img)
                 
             shortfall = TARGET_SIZE - num_samples
-
-            for idx in tqdm(range(shortfall), desc="Gerando Augmentations"):
-
-                base_img_tensor = random.choice(loaded_tensors)
+            
+            for _ in tqdm(range(shortfall), desc="Gerando Augmentations"):
+                base_img_tensor = random.choice(final_class_images[:num_samples])
                 augmented_img   = apply_augmentation_and_noise(base_img_tensor)
-                
-                output_file_path = os.path.join(class_output_dir, f"aug_{idx}.jpg")
+                final_class_images.append(augmented_img)
 
-                keras.utils.save_img(output_file_path, augmented_img)
+        print(f"Dividindo e salvando {len(final_class_images)} imagens...")
+        save_images_to_splits(class_name, final_class_images)
 
 
 if __name__ == "__main__":
 
-    os.makedirs(OUTPUT_DIR, exist_ok = True)
+    os.makedirs(OUTPUT_DIR, exist_ok=True)
 
-    top_classes = get_top_classes(top = SUBSET_SIZE)
+    top_classes = get_top_classes(top=SUBSET_SIZE)
 
     print("--- Classes Selecionadas e Contagem Original ---")
     for class_name, files in top_classes:
         print(f"- {class_name}: {len(files)} amostras")
     print("-" * 50)
 
-    print("\nIniciando o processamento e salvamento em disco...")
-
+    print("\nIniciando o processamento, divisão (70/15/15) e salvamento...")
     create_subset(top_classes)
 
     print("\n--- PROCESSO CONCLUÍDO COM SUCESSO ---")
-    print(f"O dataset balanceado foi salvo em: {OUTPUT_DIR}")
+    print(f"O dataset foi dividido e salvo em: {OUTPUT_DIR}")

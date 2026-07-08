@@ -10,19 +10,21 @@ DATASET_DIR = 'data/PlantVillageSubset'
 IMG_SIZE    = 128  
 NUM_CLASSES = 10  
 
-MODEL_DIST_PATH = "dist/models/mobresv1"
+MODEL_DIST_PATH = "dist/mobresv1"
 MODEL_SAVE_PATH = f"{MODEL_DIST_PATH}/mobresv1.keras"
 EPOCHS          = 100
 BATCH_SIZE      = 16
 LEARNING_RATE   = 1e-4
 
 def load_datasets(dataset_dir, img_size, batch_size):
+    
     print("-> Carregando datasets do disco...")
     
+    train_path = os.path.join(dataset_dir, 'train')
+    val_path   = os.path.join(dataset_dir, 'val')
+    
     train_ds = keras.utils.image_dataset_from_directory(
-        dataset_dir,
-        validation_split = 0.2,
-        subset           = "training",
+        train_path,
         seed             = 42,
         image_size       = (img_size, img_size),
         batch_size       = batch_size,
@@ -30,9 +32,7 @@ def load_datasets(dataset_dir, img_size, batch_size):
     )
 
     val_ds = keras.utils.image_dataset_from_directory(
-        dataset_dir,
-        validation_split = 0.2,
-        subset           = "validation",
+        val_path,
         seed             = 42,
         image_size       = (img_size, img_size),
         batch_size       = batch_size,
@@ -67,34 +67,36 @@ def get_callbacks(model_save_path):
     return callbacks
 
 def plot_training_results(history):
+    
+    os.mkdir(MODEL_DIST_PATH, exist_ok=True)
 
-    acc          = history.history['accuracy']
-    val_acc      = history.history['val_accuracy']
-    loss         = history.history['loss']
-    val_loss     = history.history['val_loss']
-    epochs_range = range(len(acc))
+    acc = history.history["accuracy"]
+    val_acc = history.history["val_accuracy"]
+    loss = history.history["loss"]
+    val_loss = history.history["val_loss"]
+    epochs = range(1, len(acc) + 1)
 
-    plt.figure(figsize=(6, 5)) 
-    plt.plot(epochs_range, acc, label='Treino')
-    plt.plot(epochs_range, val_acc, label='Validação')
-    plt.legend(loc='lower right')
-    plt.title('Acurácia de Treino vs Validação')
-    plt.xlabel('Épocas')
-    plt.ylabel('Acurácia')
-    plt.tight_layout() 
-    plt.savefig(f"{MODEL_DIST_PATH}/accuracy.png")
-    plt.close() 
+    fig, ax = plt.subplots(figsize=(6, 5))
+    ax.plot(epochs, acc, label="Treino")
+    ax.plot(epochs, val_acc, label="Validação")
+    ax.set_title("Acurácia de Treino vs Validação")
+    ax.set_xlabel("Épocas")
+    ax.set_ylabel("Acurácia")
+    ax.legend(loc="lower right")
+    fig.tight_layout()
+    fig.savefig(f"{MODEL_DIST_PATH}/accuracy.png", dpi=300, bbox_inches="tight")
+    plt.close(fig)
 
-    plt.figure(figsize=(6, 5))
-    plt.plot(epochs_range, loss, label='Treino')
-    plt.plot(epochs_range, val_loss, label='Validação')
-    plt.legend(loc='upper right')
-    plt.title('Perda (Loss) de Treino vs Validação')
-    plt.xlabel('Épocas')
-    plt.ylabel('Perda')
-    plt.tight_layout()
-    plt.savefig(f"{MODEL_DIST_PATH}/loss.png")
-    plt.close()
+    fig, ax = plt.subplots(figsize=(6, 5))
+    ax.plot(epochs, loss, label="Treino")
+    ax.plot(epochs, val_loss, label="Validação")
+    ax.set_title("Perda (Loss) de Treino vs Validação")
+    ax.set_xlabel("Épocas")
+    ax.set_ylabel("Perda")
+    ax.legend(loc="upper right")
+    fig.tight_layout()
+    fig.savefig(f"{MODEL_DIST_PATH}/loss.png", dpi=300, bbox_inches="tight")
+    plt.close(fig)
 
 if __name__ == "__main__":
 
