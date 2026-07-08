@@ -1,175 +1,120 @@
 import os
-import random
-import numpy as np
-import tensorflow as tf
-from keras.callbacks import EarlyStopping
+import keras
 
-# Importando a classe do seu modelo MobRes (definida em model.py)
-from model import MobRes
+import tensorflow        as tf
+import matplotlib.pyplot as plt
 
-import os
+from mobres import create_model
 
-import tensorflow as tf
+DATASET_DIR = 'data/PlantVillageSubset'
+IMG_SIZE    = 128  
+NUM_CLASSES = 10  
 
-def setup_gpu():
-    """Configura o TensorFlow para alocar memória dinamicamente."""
-    gpus = tf.config.list_physical_devices('GPU')
-    if gpus:
-        try:
-            for gpu in gpus:
-                tf.config.experimental.set_memory_growth(gpu, True)
-            print("Crescimento de memória da GPU ativado com sucesso.")
-        except RuntimeError as e:
-            print(f"Erro ao configurar GPU: {e}")
+MODEL_DIST_PATH = "dist/models/mobresv1"
+MODEL_SAVE_PATH = f"{MODEL_DIST_PATH}/mobresv1.keras"
+EPOCHS          = 100
+BATCH_SIZE      = 16
+LEARNING_RATE   = 1e-4
 
-def set_seed(seed=42):
-    """Garante a reprodutibilidade dos experimentos."""
-    random.seed(seed)
-    np.random.seed(seed)
-    tf.random.set_seed(seed)
-
-
-def load_datasets(processed_dir, batch_size=16):
-    """
-    Carrega os datasets de Treino, Validação e Teste que foram salvos 
-    pelo script de pré-processamento offline.
+def load_datasets(dataset_dir, img_size, batch_size):
+    print("-> Carregando datasets do disco...")
     
-    Aplica também o redimensionamento padrão (128x128), a codificação 
-    one-hot das classes (label_mode='categorical') e a normalização dos pixels em [0, 1].
-    """
-    train_path = os.path.join(processed_dir, "train")
-    val_path = os.path.join(processed_dir, "val")
-    test_path = os.path.join(processed_dir, "test")
-
-    # Verifica se as pastas existem
-    for path in [train_path, val_path, test_path]:
-        if not os.path.exists(path):
-            raise FileNotFoundError(f"Diretório não encontrado: {path}. Certifique-se de rodar o pré-processamento primeiro.")
-
-    # Carrega o conjunto de treino
-    train_ds = tf.keras.utils.image_dataset_from_directory(
-        train_path,
-        image_size=(128, 128),
-        batch_size=batch_size,
-        label_mode="categorical",
-        shuffle=True
-    )
-    
-    # Carrega o conjunto de validação
-    val_ds = tf.keras.utils.image_dataset_from_directory(
-        val_path,
-        image_size=(128, 128),
-        batch_size=batch_size,
-        label_mode="categorical",
-        shuffle=False
+    train_ds = keras.utils.image_dataset_from_directory(
+        dataset_dir,
+        validation_split = 0.2,
+        subset           = "training",
+        seed             = 42,
+        image_size       = (img_size, img_size),
+        batch_size       = batch_size,
+        label_mode       = "categorical"
     )
 
-    # Carrega o conjunto de teste
-    test_ds = tf.keras.utils.image_dataset_from_directory(
-        test_path,
-        image_size=(128, 128),
-        batch_size=batch_size,
-        label_mode="categorical",
-        shuffle=False
+    val_ds = keras.utils.image_dataset_from_directory(
+        dataset_dir,
+        validation_split = 0.2,
+        subset           = "validation",
+        seed             = 42,
+        image_size       = (img_size, img_size),
+        batch_size       = batch_size,
+        label_mode       = "categorical"
     )
     
-    # Captura a lista das classes mapeadas e sua quantidade
-    class_names = train_ds.class_names
-    num_classes = len(class_names)
+    train_ds = train_ds.prefetch(buffer_size = tf.data.AUTOTUNE)
+    val_ds   = val_ds.prefetch(buffer_size = tf.data.AUTOTUNE)
     
-    # Mapeamento para normalizar os valores dos pixels de [0, 255] para [0, 1]
-    # Conforme as restrições e normalizações descritas no artigo
-    normalization_layer = lambda x, y: (x / 255.0, y)
-    
-    train_ds = train_ds.map(normalization_layer, num_parallel_calls=tf.data.AUTOTUNE)
-    val_ds = val_ds.map(normalization_layer, num_parallel_calls=tf.data.AUTOTUNE)
-    test_ds = test_ds.map(normalization_layer, num_parallel_calls=tf.data.AUTOTUNE)
-    
-    # Prefetch para otimizar o uso da GPU/CPU durante o treinamento
-    train_ds = train_ds.prefetch(buffer_size=tf.data.AUTOTUNE)
-    val_ds = val_ds.prefetch(buffer_size=tf.data.AUTOTUNE)
-    test_ds = test_ds.prefetch(buffer_size=tf.data.AUTOTUNE)
-    
-    return train_ds, val_ds, test_ds, num_classes, class_names
+    return train_ds, val_ds
 
+def get_callbacks(model_save_path):
 
-def run_training(train_dataset, val_dataset, num_classes):
-    """Instancia, compila e executa o ciclo de treinamento do MobRes."""
+    os.makedirs(os.path.dirname(model_save_path), exist_ok=True)
     
-    # Inicializa o modelo no estilo subclassificado
-    model = MobRes(input_shape=(128, 128, 3), num_classes=num_classes)
-    
-    # Otimizador Adam com taxa de aprendizado inicial padrão de 0.001
-    optimizer = tf.keras.optimizers.Adam(learning_rate=0.001)
-    
-    # Compilação usando a perda de entropia cruzada categórica
-    model.compile(
-        optimizer=optimizer,
-        loss='categorical_crossentropy',
-        metrics=['accuracy']
-    )
-    
-    # Callback de Early Stopping monitorando 'val_loss' por até 5 épocas
-    # Restaura os melhores pesos obtidos ao fim do treinamento
-    early_stopping = EarlyStopping(
-        monitor='val_loss',
-        patience=5,
-        restore_best_weights=True,
-        verbose=1
-    )
-    
-    print(f"\nIniciando o treinamento do modelo MobRes para {num_classes} classes...")
-    
-    # Treinamento configurado para até 40 épocas conforme o artigo
-    history = model.fit(
-        train_dataset,
-        epochs=40,
-        validation_data=val_dataset,
-        callbacks=[early_stopping]
-    )
-    
-    return model, history
+    callbacks = [
 
+        keras.callbacks.EarlyStopping(
+            monitor              = "val_loss", 
+            patience             = 3, 
+            restore_best_weights = True
+        ),
 
-def evaluate_model(model, test_dataset):
-    """Avalia a performance final do modelo treinado utilizando o conjunto de teste isolado."""
-    print("\n--- Avaliando o modelo no conjunto de teste final ---")
-    loss, accuracy = model.evaluate(test_dataset)
-    print(f"Perda no Teste (Test Loss): {loss:.4f}")
-    print(f"Acurácia no Teste (Test Accuracy): {accuracy * 100:.2f}%")
+        keras.callbacks.ModelCheckpoint(
+            filepath       = model_save_path, 
+            monitor        = "val_accuracy", 
+            save_best_only = True
+        )
 
+    ]
 
-# ==========================================
-# BLOCO PRINCIPAL DE EXECUÇÃO
-# ==========================================
+    return callbacks
+
+def plot_training_results(history):
+
+    acc          = history.history['accuracy']
+    val_acc      = history.history['val_accuracy']
+    loss         = history.history['loss']
+    val_loss     = history.history['val_loss']
+    epochs_range = range(len(acc))
+
+    plt.figure(figsize=(6, 5)) 
+    plt.plot(epochs_range, acc, label='Treino')
+    plt.plot(epochs_range, val_acc, label='Validação')
+    plt.legend(loc='lower right')
+    plt.title('Acurácia de Treino vs Validação')
+    plt.xlabel('Épocas')
+    plt.ylabel('Acurácia')
+    plt.tight_layout() 
+    plt.savefig(f"{MODEL_DIST_PATH}/accuracy.png")
+    plt.close() 
+
+    plt.figure(figsize=(6, 5))
+    plt.plot(epochs_range, loss, label='Treino')
+    plt.plot(epochs_range, val_loss, label='Validação')
+    plt.legend(loc='upper right')
+    plt.title('Perda (Loss) de Treino vs Validação')
+    plt.xlabel('Épocas')
+    plt.ylabel('Perda')
+    plt.tight_layout()
+    plt.savefig(f"{MODEL_DIST_PATH}/loss.png")
+    plt.close()
+
 if __name__ == "__main__":
-    # Define a semente global para garantir a reprodutibilidade
-    setup_gpu()
-    set_seed(42)
+
+    train_dataset, val_dataset = load_datasets(DATASET_DIR, IMG_SIZE, BATCH_SIZE)
     
-    # Caminho onde o script anterior salvou a estrutura balanceada
-    PROCESSED_DATA_DIR = "data/plant_disease_expert_processed" 
-    
-    # 1. Carrega os conjuntos pré-processados e normalizados do disco
-    train_ds, val_ds, test_ds, num_classes, class_names = load_datasets(
-        processed_dir=PROCESSED_DATA_DIR, 
-        batch_size=16  # Batch size fixado em 16 conforme o artigo
+    mobres_model = create_model(
+        num_classes = NUM_CLASSES
     )
     
-    print(f"Dataset carregado com sucesso!")
-    print(f"Quantidade de classes encontradas: {num_classes}")
+    callbacks_list = get_callbacks(MODEL_SAVE_PATH)
     
-    # 2. Executa a rotina de treinamento por 40 épocas com EarlyStopping
-    model, history = run_training(
-        train_dataset=train_ds,
-        val_dataset=val_ds,
-        num_classes=num_classes
+    print(f"Iniciando o treinamento por {EPOCHS} épocas...")
+
+    history = mobres_model.fit(
+        train_dataset,
+        validation_data = val_dataset,
+        epochs          = EPOCHS,
+        callbacks       = callbacks_list
     )
     
-    # 3. Salva os pesos finais do modelo treinado
-    weights_filename = "dist/mobres.h5"
-    model.save_weights(weights_filename)
-    print(f"Pesos de treinamento salvos localmente em: '{weights_filename}'")
+    print(f"Treinamento Concluído! O melhor modelo foi salvo em: {MODEL_SAVE_PATH}")
     
-    # 4. Avaliação opcional do modelo no conjunto de teste limpo
-    evaluate_model(model, test_ds)
+    plot_training_results(history)
