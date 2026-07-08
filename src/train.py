@@ -70,11 +70,11 @@ def plot_training_results(history):
     
     os.makedirs(MODEL_DIST_PATH, exist_ok=True)
 
-    acc = history.history["accuracy"]
-    val_acc = history.history["val_accuracy"]
-    loss = history.history["loss"]
+    acc      = history.history["accuracy"]
+    val_acc  = history.history["val_accuracy"]
+    loss     = history.history["loss"]
     val_loss = history.history["val_loss"]
-    epochs = range(1, len(acc) + 1)
+    epochs   = range(1, len(acc) + 1)
 
     fig, ax = plt.subplots(figsize=(6, 5))
     ax.plot(epochs, acc, label="Treino")
