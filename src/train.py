@@ -4,14 +4,14 @@ import keras
 import tensorflow        as tf
 import matplotlib.pyplot as plt
 
-from mobilenetv2 import create_model
+from mobilenetv3 import create_model
 
 DATASET_DIR = 'data/PlantVillageSubset'
 IMG_SIZE    = 128  
 NUM_CLASSES = 10  
 
-MODEL_DIST_PATH = "dist/mobilenetv2"
-MODEL_SAVE_PATH = f"{MODEL_DIST_PATH}/mobilenetv2.keras"
+MODEL_DIST_PATH = "dist/mobilenetv3"
+MODEL_SAVE_PATH = f"{MODEL_DIST_PATH}/mobilenetv3.keras"
 EPOCHS          = 100
 BATCH_SIZE      = 16
 LEARNING_RATE   = 1e-4
