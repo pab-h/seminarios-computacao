@@ -19,8 +19,8 @@ from sklearn.metrics      import ConfusionMatrixDisplay
 DATASET_DIR     = 'data/PlantVillageSubset'
 IMG_SIZE        = 128
 BATCH_SIZE      = 16
-MODEL_DIST_PATH = "dist/mobresv1"
-MODEL_SAVE_PATH = f"{MODEL_DIST_PATH}/mobresv1.keras"
+MODEL_DIST_PATH = "dist/mobilenetv2"
+MODEL_SAVE_PATH = f"{MODEL_DIST_PATH}/mobilenetv2.keras"
 OUTPUT_EVAL_DIR = f"{MODEL_DIST_PATH}/evaluation"
 
 def load_test_dataset(dataset_dir, img_size, batch_size):
@@ -236,11 +236,11 @@ if __name__ == "__main__":
         raise FileNotFoundError(f"Modelo não encontrado em: {MODEL_SAVE_PATH}. Treine o modelo primeiro.")
         
     print(f"-> Carregando o modelo de: {MODEL_SAVE_PATH}")
-    mobres_model = keras.models.load_model(MODEL_SAVE_PATH)
+    model = keras.models.load_model(MODEL_SAVE_PATH)
     
-    evaluate_metrics(mobres_model, test_dataset, classes)
+    evaluate_metrics(model, test_dataset, classes)
     
-    run_gradcam_variants_for_all_classes(mobres_model, test_dataset, classes)
-    run_lime_for_all_classes(mobres_model, test_dataset, classes)
+    # run_gradcam_variants_for_all_classes(model, test_dataset, classes)
+    run_lime_for_all_classes(model, test_dataset, classes)
     
     print(f"\n[SUCESSO] Avaliação concluída. Todos os gráficos e relatórios foram salvos em '{OUTPUT_EVAL_DIR}'")
