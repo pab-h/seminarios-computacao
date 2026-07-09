@@ -19,8 +19,8 @@ from sklearn.metrics      import ConfusionMatrixDisplay
 DATASET_DIR     = 'data/PlantVillageSubset'
 IMG_SIZE        = 128
 BATCH_SIZE      = 16
-MODEL_DIST_PATH = "dist/mobresv1"
-MODEL_SAVE_PATH = f"{MODEL_DIST_PATH}/mobresv1.keras"
+MODEL_DIST_PATH = "dist/mobresturbo"
+MODEL_SAVE_PATH = f"{MODEL_DIST_PATH}/mobresturbo.keras"
 OUTPUT_EVAL_DIR = f"{MODEL_DIST_PATH}/evaluation"
 
 def load_test_dataset(dataset_dir, img_size, batch_size):

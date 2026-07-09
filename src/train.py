@@ -4,14 +4,14 @@ import keras
 import tensorflow        as tf
 import matplotlib.pyplot as plt
 
-from mobres import create_model
+from mobresturbo import create_model
 
 DATASET_DIR = 'data/PlantVillageSubset'
 IMG_SIZE    = 128  
 NUM_CLASSES = 10  
 
-MODEL_DIST_PATH = "dist/mobresv1"
-MODEL_SAVE_PATH = f"{MODEL_DIST_PATH}/mobresv1.keras"
+MODEL_DIST_PATH = "dist/mobresturbo"
+MODEL_SAVE_PATH = f"{MODEL_DIST_PATH}/mobresturbo.keras"
 EPOCHS          = 100
 BATCH_SIZE      = 16
 LEARNING_RATE   = 1e-4
